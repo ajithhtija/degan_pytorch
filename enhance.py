@@ -13,7 +13,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Task specified by the user
 task = sys.argv[1]
-epoch = sys.argv[5]
+epoch = sys.argv[4]
 
 # Load the appropriate generator model and weights
 if task == 'binarize':
@@ -22,6 +22,7 @@ if task == 'binarize':
     # print('here****')
     # generator = Generator(biggest_layer = 1024).to(device)
     # generator.load_state_dict(torch.load("trained_weights/generator_2.pth"))
+    print(f'loading -> generator_{epoch}.pth ...')
     generator = torch.load(f"trained_weights/generator_{epoch}.pth")
 
 
@@ -51,8 +52,8 @@ test_padding = torch.ones((1, h, w), dtype=torch.float32, device=device)
 test_padding[0, :test_image.shape[0], :test_image.shape[1]] = torch.tensor(test_image, dtype=torch.float32, device=device)
 
 # Split the padded image into patches
-test_image_p = split2(test_padding.unsqueeze(0), size=1, h=h, w=w)
-print('//////////////',test_image_p.shape)
+test_image_p = split2(test_padding, size=1, h=h, w=w)
+# print('//////////////',test_image_p.shape)
 
 predicted_list = []
 
@@ -73,7 +74,7 @@ predicted_image = predicted_image[0, :test_image.shape[0], :test_image.shape[1]]
 
 # Postprocess for binarization if applicable
 if task == 'binarize':
-    bin_thresh = 0.5
+    bin_thresh = 0.95
     predicted_image = (predicted_image > bin_thresh).float()
 
 # Save the final predicted image

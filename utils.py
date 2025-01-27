@@ -1,17 +1,18 @@
 import torch
 import torch.nn.functional as F
 import math
+import numpy as np
 
 def psnr(img1, img2):
     """
     Calculate the Peak Signal-to-Noise Ratio (PSNR) between two images.
     img1, img2: PyTorch tensors with values normalized between 0 and 1.
     """
-    mse = torch.mean((img1 - img2) ** 2)
+    mse = np.mean((img1 - img2) ** 2)
     if mse == 0:
         return 100
     PIXEL_MAX = 1.0
-    return 20 * math.log10(PIXEL_MAX / torch.sqrt(mse))
+    return 20 * math.log10(PIXEL_MAX / math.sqrt(mse))
 
 
 def split2(dataset, size, h, w):
@@ -21,11 +22,12 @@ def split2(dataset, size, h, w):
     size: Batch size.
     h, w: Dimensions of the input images.
     """
-    nsize1, nsize2 = 256, 256
+    nsize1, nsize2 = h, w
+    # nsize1, nsize2 = 256, 256
     patches = []
 
     for i in range(size):
-        img = dataset[i]
+        img = dataset
         for ii in range(0, h, nsize1):
             for iii in range(0, w, nsize2):
                 patch = img[:, ii:ii + nsize1, iii:iii + nsize2]

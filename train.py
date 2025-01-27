@@ -10,10 +10,8 @@ import torch.optim as optim
 from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset
 from pathlib import Path
-
-from utils import getPatches
+from utils import *
 import subprocess
-
 from models.models import *
 
 '''# Define the generator model
@@ -86,20 +84,13 @@ class ImageDataset(Dataset):
         
         return deg_image, clean_image
 
-# PSNR calculation
-def psnr(img1, img2):
-    # img1, img2 = torch.tensor(img1), torch.tensor(img2)
-
-    mse = np.mean((img1 - img2) ** 2)
-    if mse == 0:
-        return 100
-    pixel_max = 1.0
-    return 20 * math.log10(pixel_max / math.sqrt(mse.item()))
 
 # Training function
 def train(generator, discriminator, dataloader, epochs, device, start):
-    criterion_gan = nn.MSELoss()
-    criterion_pixelwise = nn.L1Loss()
+    # criterion_gan = nn.MSELoss()
+    criterion_gan = nn.BCEWithLogitsLoss()
+    criterion_pixelwise = nn.MSELoss()
+    # criterion_pixelwise = nn.L1Loss()
 
     optimizer_g = optim.Adam(generator.parameters(), lr=0.0002, betas=(0.5, 0.999))
     optimizer_d = optim.Adam(discriminator.parameters(), lr=0.0002, betas=(0.5, 0.999))
@@ -115,8 +106,8 @@ def train(generator, discriminator, dataloader, epochs, device, start):
             
             # print(deg_images.shape, clean_images.shape)
             # Train discriminator
-            valid = torch.ones((deg_images.size(0), 1, 31, 31), device=device)
-            fake = torch.zeros((deg_images.size(0), 1, 31, 31), device=device)
+            valid = torch.ones((deg_images.size(0), 1, 16, 16), device=device)
+            fake = torch.zeros((deg_images.size(0), 1, 16, 16), device=device)
 
             optimizer_d.zero_grad()
             # print(deg_images.shape, '????')
@@ -132,8 +123,8 @@ def train(generator, discriminator, dataloader, epochs, device, start):
             optimizer_g.zero_grad()
 
             g_loss_gan = criterion_gan(discriminator(torch.cat((gen_images, deg_images), 1)), valid)
-            g_loss_pixel = criterion_pixelwise(gen_images, clean_images)
-            g_loss = g_loss_gan + 100 * g_loss_pixel
+            g_loss_pixel = criterion_gan(gen_images, clean_images)
+            g_loss = g_loss_gan + g_loss_pixel
             g_loss.backward()
             optimizer_g.step()
 
@@ -173,15 +164,16 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 paths = sorted(Path('trained_weights/').iterdir(), key=os.path.getmtime, reverse = True)
-paths[0] = str(paths[0]).replace("\\", '/')
-name = paths[0].split('/')[1]
-ep = (name.split('_')[1]).split('.')[0]
+if len(paths) > 0:
+    paths[0] = str(paths[0]).replace("\\", '/')
+    name = paths[0].split('/')[1]
+    ep = (name.split('_')[1]).split('.')[0]
 
-if os.path.exists(paths[0]):
-    discriminator = torch.load(f'trained_weights/discriminator_{ep}.pth')
-    generator = torch.load(f'trained_weights/generator_{ep}.pth')
-    start = int(ep)
-    print('here')
+    if os.path.exists(paths[0]):
+        discriminator = torch.load(f'trained_weights/discriminator_{ep}.pth')
+        generator = torch.load(f'trained_weights/generator_{ep}.pth')
+        start = int(ep)
+        print(f'loading saved model at epoch {ep}...')
 
 else:
     with open('train_info.txt', 'w') as f:
@@ -189,6 +181,7 @@ else:
     generator = Generator().to(device)
     discriminator = Discriminator().to(device)
     start = 0
+    print('starting afresh...')
 
 transform = transforms.Compose([
     transforms.Resize((256, 256)),

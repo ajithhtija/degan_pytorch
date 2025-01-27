@@ -5,6 +5,7 @@ import torchvision.transforms as transforms
 
 
 # Generator Model
+
 class Generator(nn.Module):
     def __init__(self, input_channels=1, biggest_layer=512):
         super(Generator, self).__init__()
@@ -35,10 +36,10 @@ class Generator(nn.Module):
         self.encoder3 = conv_block(128, 256)
         self.pool3 = nn.MaxPool2d(2)
 
-        self.encoder4 = conv_block(256, biggest_layer // 2, dropout=True)
+        self.encoder4 = conv_block(256, biggest_layer // 2, dropout=False)
         self.pool4 = nn.MaxPool2d(2)
 
-        self.bottleneck = conv_block(biggest_layer // 2, biggest_layer, dropout=True)
+        self.bottleneck = conv_block(biggest_layer // 2, biggest_layer, dropout=False)
 
         self.upconv4 = upconv_block(biggest_layer, biggest_layer // 2)
         self.decoder4 = conv_block(biggest_layer, biggest_layer // 2)
@@ -56,7 +57,7 @@ class Generator(nn.Module):
             nn.Conv2d(64, 2, kernel_size=3, padding=1),
             nn.ReLU(inplace=True),
             nn.Conv2d(2, 1, kernel_size=1),
-            nn.Sigmoid(),
+            # nn.Sigmoid(),
         )
 
     def forward(self, x):
@@ -96,17 +97,26 @@ class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
         self.model = nn.Sequential(
-            nn.Conv2d(2, 64, kernel_size=4, stride=2, padding=1),
+            nn.Conv2d(2, 64, kernel_size=3, stride=1, padding=1),
             nn.LeakyReLU(0.2),
-            nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1),
+            nn.MaxPool2d(2),
+            
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
+            nn.LeakyReLU(0.2),
+            nn.MaxPool2d(2),
             nn.BatchNorm2d(128),
+
+            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
             nn.LeakyReLU(0.2),
-            nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1),
+            nn.MaxPool2d(2),
             nn.BatchNorm2d(256),
+
+            nn.Conv2d(256, 1, kernel_size=3, stride=1, padding=1),
             nn.LeakyReLU(0.2),
-            nn.Conv2d(256, 1, kernel_size=4, stride=1, padding=1),
-            nn.Sigmoid()
+            nn.MaxPool2d(2),
+            nn.BatchNorm2d(1),
         )
+
 
     def forward(self, x):
         return self.model(x)
